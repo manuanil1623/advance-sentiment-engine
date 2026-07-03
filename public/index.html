@@ -1,0 +1,627 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Sentiment Engine</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,500&family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg-void: #0a0a0b;
+    --surface: #161618;
+    --surface-raised: #1d1d20;
+    --hairline: #2a2a2e;
+    --hairline-soft: #232326;
+    --text-primary: #ededec;
+    --text-muted: #8c8c92;
+    --text-faint: #57575c;
+    --brass: #c9a227;
+    --brass-dim: #8a7420;
+    --positive: #5cb689;
+    --negative: #d97070;
+    --neutral: #9a9a9e;
+    --radius: 14px;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg-void);
+    color: var(--text-primary);
+    font-family: 'Inter', -apple-system, sans-serif;
+    min-height: 100vh;
+  }
+
+  body {
+    background-image:
+      radial-gradient(ellipse 80% 50% at 50% -10%, rgba(201,162,39,0.06), transparent),
+      repeating-linear-gradient(0deg, rgba(255,255,255,0.012) 0px, rgba(255,255,255,0.012) 1px, transparent 1px, transparent 2px);
+    background-attachment: fixed;
+  }
+
+  /* subtle grain overlay for the matte feel */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.035;
+    z-index: 999;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  .wrap {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 56px 28px 80px;
+  }
+
+  header.top {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 48px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--hairline);
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .brand {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+  }
+
+  .brand .mark {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--brass);
+    box-shadow: 0 0 10px 1px rgba(201,162,39,0.5);
+    display: inline-block;
+    transform: translateY(-2px);
+  }
+
+  h1 {
+    font-family: 'Fraunces', serif;
+    font-weight: 500;
+    font-size: 30px;
+    letter-spacing: 0.01em;
+    margin: 0;
+  }
+
+  .tagline {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+  }
+
+  .status-chip {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    border: 1px solid var(--hairline);
+    padding: 6px 12px;
+    border-radius: 100px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .status-chip .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--positive);
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+
+  @media (max-width: 900px) {
+    .grid { grid-template-columns: 1fr; }
+  }
+
+  .panel {
+    background: linear-gradient(180deg, var(--surface-raised), var(--surface));
+    border: 1px solid var(--hairline);
+    border-radius: var(--radius);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.03),
+      0 20px 40px -20px rgba(0,0,0,0.6);
+    padding: 26px;
+  }
+
+  .panel-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    margin-bottom: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  textarea {
+    width: 100%;
+    min-height: 200px;
+    resize: vertical;
+    background: var(--bg-void);
+    border: 1px solid var(--hairline);
+    border-radius: 10px;
+    color: var(--text-primary);
+    font-family: 'Inter', sans-serif;
+    font-size: 15px;
+    line-height: 1.55;
+    padding: 16px;
+    outline: none;
+    transition: border-color 0.15s ease;
+  }
+
+  textarea::placeholder { color: var(--text-faint); }
+
+  textarea:focus {
+    border-color: var(--brass-dim);
+    box-shadow: 0 0 0 3px rgba(201,162,39,0.12);
+  }
+
+  .dropzone {
+    margin-top: 14px;
+    border: 1px dashed var(--hairline);
+    border-radius: 10px;
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    transition: border-color 0.15s ease, background 0.15s ease;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12.5px;
+    color: var(--text-muted);
+  }
+
+  .dropzone:hover, .dropzone.drag {
+    border-color: var(--brass);
+    background: rgba(201,162,39,0.05);
+    color: var(--text-primary);
+  }
+
+  .dropzone svg { flex-shrink: 0; opacity: 0.8; }
+  .dropzone input { display: none; }
+  .dropzone .fname { color: var(--brass); }
+
+  .actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 18px;
+  }
+
+  button.analyze {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    background: var(--brass);
+    color: #17140a;
+    border: none;
+    border-radius: 8px;
+    padding: 13px 22px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: filter 0.15s ease, transform 0.05s ease;
+  }
+
+  button.analyze:hover { filter: brightness(1.08); }
+  button.analyze:active { transform: translateY(1px); }
+  button.analyze:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  button.clear {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    background: transparent;
+    color: var(--text-muted);
+    border: 1px solid var(--hairline);
+    border-radius: 8px;
+    padding: 12px 16px;
+    cursor: pointer;
+    transition: color 0.15s ease, border-color 0.15s ease;
+  }
+  button.clear:hover { color: var(--text-primary); border-color: var(--text-faint); }
+
+  .char-count {
+    margin-left: auto;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-faint);
+  }
+
+  /* --- Results panel --- */
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 320px;
+    text-align: center;
+    color: var(--text-faint);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.05em;
+  }
+  .empty-state svg { margin-bottom: 14px; opacity: 0.5; }
+
+  .gauge-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 6px 0 14px;
+  }
+
+  .gauge-readout {
+    text-align: center;
+    margin-top: 6px;
+  }
+
+  .gauge-score {
+    font-family: 'Fraunces', serif;
+    font-size: 46px;
+    font-weight: 500;
+    line-height: 1;
+  }
+
+  .gauge-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    margin-top: 6px;
+  }
+
+  .label-positive { color: var(--positive); }
+  .label-negative { color: var(--negative); }
+  .label-neutral { color: var(--neutral); }
+
+  .metrics {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: var(--hairline);
+    border: 1px solid var(--hairline);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-top: 20px;
+  }
+
+  .metric {
+    background: var(--surface);
+    padding: 14px 12px;
+    text-align: center;
+  }
+
+  .metric .v {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 18px;
+    font-weight: 600;
+  }
+
+  .metric .l {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    margin-top: 4px;
+  }
+
+  .breakdown {
+    margin-top: 22px;
+  }
+
+  .breakdown-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    margin-bottom: 12px;
+  }
+
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .chip {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12.5px;
+    padding: 6px 11px;
+    border-radius: 100px;
+    border: 1px solid var(--hairline);
+    background: var(--surface-raised);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .chip .dot { width: 6px; height: 6px; border-radius: 50%; }
+  .chip.pos .dot { background: var(--positive); }
+  .chip.neg .dot { background: var(--negative); }
+  .chip .val { color: var(--text-faint); font-size: 11px; }
+
+  .no-chips {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--text-faint);
+  }
+
+  footer {
+    margin-top: 40px;
+    text-align: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-faint);
+    letter-spacing: 0.04em;
+  }
+
+  .sr-only {
+    position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+    overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; animation: none !important; }
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="top">
+      <div class="brand">
+        <span class="mark" aria-hidden="true"></span>
+        <div>
+          <h1>Sentiment Engine</h1>
+          <div class="tagline">Lexicon-based polarity analysis</div>
+        </div>
+      </div>
+      <div class="status-chip"><span class="dot"></span> Engine online</div>
+    </header>
+
+    <div class="grid">
+      <!-- INPUT PANEL -->
+      <section class="panel">
+        <div class="panel-label">
+          <span>Input</span>
+        </div>
+
+        <textarea id="textInput" placeholder="Type or paste text to analyze…"></textarea>
+
+        <label class="dropzone" id="dropzone" for="fileInput">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 16V4M12 4l-4 4M12 4l4 4"/><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>
+          <span id="dropzoneText">Drop a .txt file here, or click to browse</span>
+          <input type="file" id="fileInput" accept=".txt,text/plain" />
+        </label>
+
+        <div class="actions">
+          <button class="analyze" id="analyzeBtn">Analyze text</button>
+          <button class="clear" id="clearBtn">Clear</button>
+          <span class="char-count" id="charCount">0 characters</span>
+        </div>
+      </section>
+
+      <!-- RESULTS PANEL -->
+      <section class="panel">
+        <div class="panel-label">
+          <span>Reading</span>
+          <span id="sentenceCount"></span>
+        </div>
+
+        <div id="resultsBody">
+          <div class="empty-state" id="emptyState">
+            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2Zm0 5v6l4 2"/></svg>
+            Awaiting input — the gauge will read out here
+          </div>
+
+          <div class="gauge-wrap" id="gaugeWrap" style="display:none">
+            <svg id="gaugeSvg" width="220" height="130" viewBox="0 0 220 130">
+              <!-- track -->
+              <path d="M 20 110 A 90 90 0 0 1 200 110" fill="none" stroke="#2a2a2e" stroke-width="10" stroke-linecap="round"/>
+              <!-- colored zones -->
+              <path d="M 20 110 A 90 90 0 0 1 76 27" fill="none" stroke="#d97070" stroke-width="10" stroke-linecap="round" opacity="0.55"/>
+              <path d="M 76 27 A 90 90 0 0 1 144 27" fill="none" stroke="#9a9a9e" stroke-width="10" stroke-linecap="round" opacity="0.4"/>
+              <path d="M 144 27 A 90 90 0 0 1 200 110" fill="none" stroke="#5cb689" stroke-width="10" stroke-linecap="round" opacity="0.55"/>
+              <!-- needle -->
+              <g id="needleGroup" transform="rotate(0 110 110)" style="transition: transform 0.6s cubic-bezier(.2,.8,.2,1);">
+                <line x1="110" y1="110" x2="110" y2="34" stroke="#c9a227" stroke-width="2.5" stroke-linecap="round"/>
+                <circle cx="110" cy="110" r="6" fill="#c9a227"/>
+                <circle cx="110" cy="110" r="2.4" fill="#17140a"/>
+              </g>
+            </svg>
+            <div class="gauge-readout">
+              <div class="gauge-score" id="gaugeScore">0.00</div>
+              <div class="gauge-label" id="gaugeLabel">—</div>
+            </div>
+          </div>
+
+          <div class="metrics" id="metrics" style="display:none">
+            <div class="metric"><div class="v" id="mScore">0</div><div class="l">Score</div></div>
+            <div class="metric"><div class="v" id="mComparative">0</div><div class="l">Comparative</div></div>
+            <div class="metric"><div class="v" id="mMagnitude">0</div><div class="l">Magnitude</div></div>
+          </div>
+
+          <div class="breakdown" id="breakdown" style="display:none">
+            <div class="breakdown-title">Detected words</div>
+            <div class="chips" id="chips"></div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <footer>Runs locally · POST /api/sentiment</footer>
+  </div>
+
+<script>
+  const textInput = document.getElementById('textInput');
+  const analyzeBtn = document.getElementById('analyzeBtn');
+  const clearBtn = document.getElementById('clearBtn');
+  const charCount = document.getElementById('charCount');
+  const dropzone = document.getElementById('dropzone');
+  const dropzoneText = document.getElementById('dropzoneText');
+  const fileInput = document.getElementById('fileInput');
+
+  const emptyState = document.getElementById('emptyState');
+  const gaugeWrap = document.getElementById('gaugeWrap');
+  const needleGroup = document.getElementById('needleGroup');
+  const gaugeScore = document.getElementById('gaugeScore');
+  const gaugeLabel = document.getElementById('gaugeLabel');
+  const metrics = document.getElementById('metrics');
+  const mScore = document.getElementById('mScore');
+  const mComparative = document.getElementById('mComparative');
+  const mMagnitude = document.getElementById('mMagnitude');
+  const breakdown = document.getElementById('breakdown');
+  const chips = document.getElementById('chips');
+  const sentenceCount = document.getElementById('sentenceCount');
+
+  function updateCharCount() {
+    const n = textInput.value.length;
+    charCount.textContent = `${n} character${n === 1 ? '' : 's'}`;
+  }
+  textInput.addEventListener('input', updateCharCount);
+  updateCharCount();
+
+  clearBtn.addEventListener('click', () => {
+    textInput.value = '';
+    updateCharCount();
+    fileInput.value = '';
+    dropzoneText.textContent = 'Drop a .txt file here, or click to browse';
+    resetResults();
+    textInput.focus();
+  });
+
+  function resetResults() {
+    emptyState.style.display = 'flex';
+    gaugeWrap.style.display = 'none';
+    metrics.style.display = 'none';
+    breakdown.style.display = 'none';
+    sentenceCount.textContent = '';
+  }
+
+  // --- File upload (drag & drop + click to browse) ---
+  function handleFile(file) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      textInput.value = e.target.result;
+      updateCharCount();
+      dropzoneText.innerHTML = `Loaded <span class="fname">${file.name}</span> — click Analyze`;
+    };
+    reader.onerror = () => {
+      dropzoneText.textContent = 'Could not read that file. Try a plain .txt file.';
+    };
+    reader.readAsText(file);
+  }
+
+  fileInput.addEventListener('change', (e) => handleFile(e.target.files[0]));
+
+  ['dragenter', 'dragover'].forEach((evt) =>
+    dropzone.addEventListener(evt, (e) => {
+      e.preventDefault();
+      dropzone.classList.add('drag');
+    })
+  );
+  ['dragleave', 'drop'].forEach((evt) =>
+    dropzone.addEventListener(evt, (e) => {
+      e.preventDefault();
+      dropzone.classList.remove('drag');
+    })
+  );
+  dropzone.addEventListener('drop', (e) => {
+    const file = e.dataTransfer.files[0];
+    handleFile(file);
+  });
+
+  // --- Analyze ---
+  function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
+
+  function renderResults(data) {
+    emptyState.style.display = 'none';
+    gaugeWrap.style.display = 'flex';
+    metrics.style.display = 'grid';
+    breakdown.style.display = 'block';
+
+    const comparative = data.comparative || 0;
+    // Map comparative (~ -2..2) to needle angle -80..80 degrees
+    const angle = clamp(comparative, -2, 2) / 2 * 80;
+    needleGroup.setAttribute('transform', `rotate(${angle} 110 110)`);
+
+    gaugeScore.textContent = comparative.toFixed(2);
+    gaugeLabel.textContent = data.label.toUpperCase();
+    gaugeLabel.className = 'gauge-label label-' + data.label;
+
+    mScore.textContent = data.score;
+    mComparative.textContent = data.comparative;
+    mMagnitude.textContent = data.magnitude;
+
+    sentenceCount.textContent = `${data.sentences.length} sentence${data.sentences.length === 1 ? '' : 's'}`;
+
+    chips.innerHTML = '';
+    const allDetails = data.sentences.flatMap((s) => s.details);
+    if (allDetails.length === 0) {
+      chips.innerHTML = '<span class="no-chips">No strongly polarized words detected</span>';
+    } else {
+      for (const d of allDetails) {
+        const el = document.createElement('span');
+        el.className = 'chip ' + (d.applied >= 0 ? 'pos' : 'neg');
+        el.innerHTML = `<span class="dot"></span>${d.word}<span class="val">${d.applied > 0 ? '+' : ''}${d.applied}</span>`;
+        chips.appendChild(el);
+      }
+    }
+  }
+
+  async function analyze() {
+    const text = textInput.value.trim();
+    if (!text) {
+      textInput.focus();
+      return;
+    }
+    analyzeBtn.disabled = true;
+    analyzeBtn.textContent = 'Analyzing…';
+    try {
+      const res = await fetch('/api/sentiment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }),
+      });
+      if (!res.ok) throw new Error('Request failed');
+      const data = await res.json();
+      renderResults(data);
+    } catch (err) {
+      dropzoneText.textContent = 'Something went wrong reaching the engine.';
+    } finally {
+      analyzeBtn.disabled = false;
+      analyzeBtn.textContent = 'Analyze text';
+    }
+  }
+
+  analyzeBtn.addEventListener('click', analyze);
+  textInput.addEventListener('keydown', (e) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') analyze();
+  });
+</script>
+</body>
+</html>

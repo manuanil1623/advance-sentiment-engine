@@ -5,6 +5,7 @@
   "main": "lib/sentimentEngine.js",
   "scripts": {
     "test": "node test.js",
+    "start": "node server.js",
     "dev": "vercel dev"
   },
   "license": "MIT"
