@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "functions": {
+    "api/sentiment.js": {
+      "memory": 128,
+      "maxDuration": 10
+    }
+  }
+}
