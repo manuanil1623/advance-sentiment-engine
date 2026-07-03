@@ -2,7 +2,6 @@
   "name": "advanced-sentiment-engine",
   "version": "1.0.0",
   "description": "Lexicon-based sentiment analysis engine with negation, intensifier, and emoji support. Deployable as a Vercel serverless API.",
-  "main": "lib/sentimentEngine.js",
   "scripts": {
     "test": "node test.js",
     "start": "node server.js",
